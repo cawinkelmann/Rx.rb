@@ -34,8 +34,8 @@ module RX
     end
 
     # Factory method for writing an assert that checks for an on_error notification record at a given time, using the specified predicate to check the exception.
-    def on_next_predicate(ticks, &block)
-      n = OnErrorPredicate.new &block
+    def on_error_predicate(ticks, &block)
+      n = OnErrorPredicate.new(&block)
       Recorded.new(ticks, n)
     end
 
@@ -50,11 +50,11 @@ module RX
     end
 
     def assert_messages(expected, actual)
-      assert_equal expected.length, actual.length
+      assert_equal expected.length, actual.length, "The size of messages differ"
 
       for i in 0..expected.length - 1
-        assert_equal expected[i].time, actual[i].time
-        assert (expected[i].value == actual[i].value)
+        assert_equal expected[i].time, actual[i].time, "The messages[#{i}].time differ"
+        assert_equal expected[i].value, actual[i].value, "The messages[#{i}].value differ"
       end
     end
 

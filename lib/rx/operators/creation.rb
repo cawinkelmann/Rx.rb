@@ -53,7 +53,7 @@ module RX
       end
 
       # Generates an observable sequence by running a state-driven loop producing the sequence's elements.
-      def generate(initial_state, condition, result_selector, iterate, scheduler = CurrentThreadScheduler.instance)
+      def generate(initial_state, condition, iterate, result_selector, scheduler = CurrentThreadScheduler.instance)
         AnonymousObservable.new do |observer|
           state = initial_state
           first = true
@@ -104,6 +104,7 @@ module RX
           }
         end
       end
+      alias :return :just
 
       # Converts an array to an observable sequence, using an optional scheduler to enumerate the array.
       def of_array(array, scheduler = CurrentThreadScheduler.instance)
@@ -123,7 +124,7 @@ module RX
 
       # Converts an Enumerable to an observable sequence, using an optional scheduler to enumerate the array.
       def of_enumerable(enumerable, scheduler = CurrentThreadScheduler.instance)
-        Observer.of_enumerator(enumerable.to_enum, scheduler)
+        Observable.of_enumerator(enumerable.to_enum, scheduler)
       end
 
       # Converts an Enumerator to an observable sequence, using an optional scheduler to enumerate the array.
@@ -193,7 +194,7 @@ module RX
             subscription = resource unless resource.nil?
             source = observable_factory.call resource
           rescue => e
-            return CompositeSubscription.new [self.class.raise_error(e).subscribe(observer), subscription]
+            next CompositeSubscription.new [self.raise_error(e).subscribe(observer), subscription]
           end
 
           CompositeSubscription.new [source.subscribe(observer), subscription]

@@ -277,7 +277,7 @@ module RX
             inner_obs = Observer.configure do |io|
               io.on_next {|x| gate.synchronize { observer.on_next x } }
               
-              io.on_error {|_| gate.synchronize { observer.on_error x } }
+              io.on_error {|err| gate.synchronize { observer.on_error err } }
               
               io.on_completed do
                 group.delete inner_subscription
@@ -436,7 +436,7 @@ module RX
           subscription = SerialSubscription.new
           last_error = nil
 
-          cancelable = CurrentThreadScheduler.instance.schedule_recursive do |this|
+          cancelable = CurrentThreadScheduler.instance.schedule_recursive lambda {|this|
             gate.wait do
               current = nil
               has_next = false
@@ -484,7 +484,7 @@ module RX
               subscription.subscription = d
               d.subscription = current.subscribe new_obs
             end
-          end
+          }
 
           CompositeSubscription.new [subscription, cancelable, Subscription.create { gate.wait { disposed = true } }]
         end
@@ -609,9 +609,14 @@ module RX
       end
 
       # Merges elements from all of the specified observable sequences into a single observable sequence, using the specified scheduler for enumeration of and subscription to the sources.
-      def merge_all(scheduler = CurrentThreadScheduler.instance, *args)
+      def merge_all(*args)
+        scheduler = CurrentThreadScheduler.instance
+        if args.size > 0 && Scheduler === args[0]
+          scheduler = args.shift
+        end
         Observable.from_array(args, scheduler).merge_all
       end
+      alias :merge :merge_all
 
       # Concatenates all of the specified observable sequences, even if the previous observable sequence terminated exceptionally.
       def on_error_resume_next(*args)
@@ -621,7 +626,7 @@ module RX
           e = args.length == 1 && args[0].is_a?(Enumerator) ? args[0] : args.to_enum
           subscription = SerialSubscription.new
 
-          cancelable = CurrentThreadScheduler.schedule_recursive do |this|
+          cancelable = CurrentThreadScheduler.instance.schedule_recursive lambda {|this|
             gate.wait do
               current = nil
               has_next = false
@@ -661,7 +666,7 @@ module RX
 
               d.subscription = current.subscribe new_obs
             end
-          end
+          }
 
           CompositeSubscription.new [subscription, cancelable, Subscription.create { gate.wait { disposed = true } }]
         end
